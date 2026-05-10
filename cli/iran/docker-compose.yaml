@@ -1,0 +1,25 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: always
+
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  dispatcher:
+    build: ./dispatcher
+    restart: always
+    depends_on:
+      - redis
+
+  frontend:
+    build: .
+    container_name: gemini-chat-frontend
+    ports:
+      - "8080:80"
+    restart: always
