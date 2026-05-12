@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Persian Chat - Dark</title>
+    <!-- Vazirmatn Font -->
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700&display=swap" rel="stylesheet"> -->
+    <style>
+        :root {
+            --bg-color: #131314;
+            --sidebar-color: #1e1f20;
+            --text-main: #e3e3e3;
+            --text-sub: #c4c7c5;
+            --input-bg: #1e1f20;
+            --input-hover: #28292a;
+            --accent-blue: #a8c7fa;
+            --error-red: #f2b8b5;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top Bar for Domain */
+        #top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: flex-end; 
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #domain-name {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            color: var(--text-sub);
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            border-right: 2px solid var(--accent-blue);
+            width: 0;
+            direction: ltr;
+            text-align: left;
+            animation: 
+                typing 3s steps(10, end) infinite alternate-reverse,
+                blink 0.8s infinite;
+            animation-delay: 2s;
+        }
+
+        @keyframes typing {
+            0%, 70% { width: 110px; }
+            90%, 100% { width: 0; }
+        }
+
+        @keyframes blink {
+            from, to { border-color: transparent }
+            50% { border-color: var(--accent-blue) }
+        }
+
+        /* Chat Display Area */
+        #chat-window {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 60px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #messages-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            padding-bottom: 40px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message { align-items: flex-start; }
+        .assistant-message { align-items: flex-start; }
+
+        .bubble {
+            max-width: 100%;
+            line-height: 1.8;
+            font-size: 16px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .user-message .bubble {
+            background-color: var(--input-bg);
+            padding: 12px 20px;
+            border-radius: 24px;
+            color: var(--text-main);
+            align-self: flex-start;
+        }
+
+        .assistant-message .bubble {
+            padding: 0 10px;
+            color: var(--text-main);
+        }
+
+        /* Image handling in chat */
+        .message-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .message-images img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid #3c4043;
+        }
+
+        /* Loading Animation */
+        .loading-skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 10px;
+        }
+
+        .skeleton-line {
+            height: 16px;
+            background: linear-gradient(90deg, #1e1f20 25%, #2d2e2f 50%, #1e1f20 75%);
+            background-size: 200% 100%;
+            animation: skeleton-move 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes skeleton-move {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Bottom Input Section */
+        #input-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 20px 24px 20px;
+            background: linear-gradient(transparent, var(--bg-color) 40%);
+        }
+
+        #input-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--input-bg);
+            border-radius: 32px;
+            padding: 8px 16px;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.2s, box-shadow 0.2s, opacity 0.3s;
+        }
+
+        #input-container.locked {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        #input-container:focus-within {
+            background-color: var(--input-hover);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+        }
+
+        /* Preview area for multiple images */
+        #preview-bar {
+            display: none;
+            padding: 12px 0;
+            overflow-x: auto;
+            white-space: nowrap;
+            gap: 12px;
+            display: flex;
+        }
+
+        #preview-bar::-webkit-scrollbar { height: 4px; }
+        #preview-bar::-webkit-scrollbar-thumb { background: #3c4043; border-radius: 10px; }
+
+        .preview-item {
+            position: relative;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .preview-item img {
+            height: 70px;
+            width: 70px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid #3c4043;
+        }
+
+        .remove-img-small {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #e3e3e3;
+            color: #131314;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        #input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        textarea {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 12px 8px;
+            font-family: inherit;
+            font-size: 16px;
+            resize: none;
+            max-height: 200px;
+            min-height: 48px;
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        textarea::placeholder {
+            color: #80868b;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-sub);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .icon-btn:hover { background-color: #3c4043; color: white; }
+        .icon-btn svg { fill: currentColor; width: 24px; height: 24px; }
+        
+        .icon-btn:disabled {
+            cursor: default;
+            color: #5f6368;
+        }
+
+        #error-msg {
+            color: var(--error-red);
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: none;
+            text-align: center;
+        }
+
+        #retry-link {
+            text-decoration: underline;
+            cursor: pointer;
+            margin-right: 8px;
+            font-weight: 700;
+        }
+
+        #chat-window::-webkit-scrollbar { width: 8px; }
+        #chat-window::-webkit-scrollbar-thumb { background: #3c4043; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div id="domain-name">mousiol.ir</div>
+    </div>
+
+    <div id="chat-window">
+        <div id="messages-container"></div>
+    </div>
+
+    <div id="input-wrapper">
+        <div id="error-msg">
+            خطایی رخ داد. <span id="retry-link">تلاش مجدد</span>
+        </div>
+
+        <div id="input-container">
+            <div id="preview-bar" style="display: none;"></div>
+            
+            <div id="input-row">
+                <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
+                <button class="icon-btn" id="upload-btn" onclick="document.getElementById('file-input').click()" title="افزودن تصویر">
+                    <svg viewBox="0 0 24 24"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/></svg>
+                </button>
+                
+                <textarea id="user-input" rows="1" placeholder="پیام خود را اینجا بنویسید..."></textarea>
+                
+                <button id="send-btn" class="icon-btn" title="ارسال">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('messages-container');
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const fileInput = document.getElementById('file-input');
+        const previewBar = document.getElementById('preview-bar');
+        const errorMsg = document.getElementById('error-msg');
+        
+        const inputContainer = document.getElementById('input-container');
+        const sendBtn = document.getElementById('send-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+
+        let chatHistory = [];
+        let selectedImages = []; // Array of {mime_type, data, size, id}
+        let lastAttempt = null;
+        let isProcessing = false;
+
+        const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+        const MAX_TOTAL_SIZE = 2 * 1024 * 1024; // 2MB
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            
+            for (const file of files) {
+                // Check if individual file is > 1MB
+                if (file.size > MAX_FILE_SIZE) {
+                    showCustomError(`فایل ${file.name} بزرگتر از ۱ مگابایت است.`);
+                    continue;
+                }
+
+                // Check total size
+                const currentTotal = selectedImages.reduce((sum, img) => sum + img.size, 0);
+                if (currentTotal + file.size > MAX_TOTAL_SIZE) {
+                    showCustomError("مجموع حجم تصاویر نمی‌تواند بیشتر از ۲ مگابایت باشد.");
+                    break;
+                }
+
+                const reader = new FileReader();
+                const promise = new Promise(resolve => {
+                    reader.onload = (ev) => {
+                        const base64Data = ev.target.result.split(',')[1];
+                        const imgId = Date.now() + Math.random();
+                        selectedImages.push({
+                            id: imgId,
+                            mime_type: file.type,
+                            data: base64Data,
+                            size: file.size,
+                            src: ev.target.result
+                        });
+                        resolve();
+                    };
+                });
+                reader.readAsDataURL(file);
+                await promise;
+            }
+            
+            renderPreviews();
+            fileInput.value = ''; // Reset input so same file can be selected again
+        });
+
+        function showCustomError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+            setTimeout(() => {
+                if (errorMsg.textContent === msg) errorMsg.style.display = 'none';
+            }, 5000);
+        }
+
+        function renderPreviews() {
+            if (selectedImages.length === 0) {
+                previewBar.style.display = 'none';
+                return;
+            }
+
+            previewBar.style.display = 'flex';
+            previewBar.innerHTML = '';
+            
+            selectedImages.forEach(img => {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <img src="${img.src}">
+                    <button class="remove-img-small" onclick="removeImage(${img.id})">✕</button>
+                `;
+                previewBar.appendChild(item);
+            });
+        }
+
+        function removeImage(id) {
+            selectedImages = selectedImages.filter(img => img.id !== id);
+            renderPreviews();
+        }
+
+        function clearImages() {
+            selectedImages = [];
+            renderPreviews();
+        }
+
+        function setLockState(locked) {
+            isProcessing = locked;
+            userInput.disabled = locked;
+            sendBtn.disabled = locked;
+            uploadBtn.disabled = locked;
+            
+            if (locked) {
+                inputContainer.classList.add('locked');
+            } else {
+                inputContainer.classList.remove('locked');
+                userInput.focus();
+            }
+        }
+
+        function scrollToBottom() {
+            chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
+        }
+
+        function createMessageUI(role, text = "", images = []) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `message ${role}-message`;
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+
+            if (images && images.length > 0) {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'message-images';
+                images.forEach(img => {
+                    const i = document.createElement('img');
+                    i.src = img.src || `data:${img.mime_type};base64,${img.data}`;
+                    imgContainer.appendChild(i);
+                });
+                bubble.appendChild(imgContainer);
+            }
+            
+            if (text || role === 'assistant') {
+                const t = document.createElement('div');
+                t.textContent = text;
+                bubble.appendChild(t);
+            }
+
+            wrapper.appendChild(bubble);
+            chatContainer.appendChild(wrapper);
+            scrollToBottom();
+            return wrapper;
+        }
+
+        function showLoading() {
+            const loader = document.createElement('div');
+            loader.id = 'current-loader';
+            loader.className = 'message assistant-message';
+            loader.innerHTML = `
+                <div class="loading-skeleton">
+                    <div class="skeleton-line" style="width: 80%"></div>
+                    <div class="skeleton-line" style="width: 60%"></div>
+                    <div class="skeleton-line" style="width: 40%"></div>
+                </div>
+            `;
+            chatContainer.appendChild(loader);
+            scrollToBottom();
+        }
+
+        function removeLoading() {
+            const loader = document.getElementById('current-loader');
+            if (loader) loader.remove();
+        }
+
+        async function streamText(element, fullText) {
+            element.textContent = "";
+            let i = 0;
+            const speed = 10;
+            return new Promise(resolve => {
+                function type() {
+                    if (i < fullText.length) {
+                        element.textContent += fullText.charAt(i);
+                        i++;
+                        scrollToBottom();
+                        setTimeout(type, speed);
+                    } else { resolve(); }
+                }
+                type();
+            });
+        }
+
+        async function performCall(message, imagesArray) {
+            if (isProcessing || (!message && imagesArray.length === 0)) return;
+
+            errorMsg.style.display = 'none';
+            setLockState(true);
+            
+            const userView = createMessageUI('user', message, imagesArray);
+            
+            const attemptMessage = message;
+            const attemptImages = [...imagesArray];
+
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            clearImages();
+            showLoading();
+            
+            try {
+                const payload = {
+                    message: attemptMessage,
+                    images: attemptImages.map(img => ({
+                        mime_type: img.mime_type,
+                        data: img.data
+                    })),
+                };
+
+                const initRes = await fetch('https://gemini.mousiol.ir/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const initData = await initRes.json();
+                if (!initRes.ok || !initData.success) throw new Error("Initialization failed");
+                const jobId = initData.job_id;
+
+                let jobDone = false;
+                let finalContent = null;
+
+                while (!jobDone) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    const pollRes = await fetch(`https://gemini.mousiol.ir/result/${jobId}`);
+                    const pollData = await pollRes.json();
+                    
+                    if (!pollRes.ok || !pollData.success) throw new Error("Polling failed");
+
+                    if (pollData.status === 'done') {
+                        jobDone = true;
+                        finalContent = pollData.result;
+                    } else if (pollData.status === 'failed') {
+                        throw new Error(pollData.result || "Job failed");
+                    }
+                }
+
+                removeLoading();
+                const assistantWrapper = createMessageUI('assistant', "");
+                const textContainer = assistantWrapper.querySelector('.bubble div');
+
+                await streamText(textContainer, finalContent || "پاسخی دریافت نشد.");
+                
+                chatHistory.push({ role: 'user', content: attemptMessage });
+                chatHistory.push({ role: 'assistant', content: finalContent });
+                
+                setLockState(false);
+
+            } catch (err) {
+                console.error(err);
+                removeLoading();
+                chatContainer.removeChild(userView);
+                errorMsg.textContent = "خطایی رخ داد.";
+                errorMsg.style.display = 'block';
+                lastAttempt = { text: attemptMessage, img: attemptImages };
+                setLockState(false);
+            }
+        }
+
+        sendBtn.onclick = () => performCall(userInput.value.trim(), selectedImages);
+
+        userInput.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!isProcessing) sendBtn.click();
+            }
+        };
+
+        document.getElementById('retry-link').onclick = () => {
+            if (lastAttempt) performCall(lastAttempt.text, lastAttempt.img);
+        };
+    </script>
+</body>
+</html>

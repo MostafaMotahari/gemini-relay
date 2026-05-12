@@ -12,7 +12,7 @@ from config import QUEUE_NAME
 app = FastAPI()
 
 
-@app.post("/api/chat")
+@app.post("/chat")
 async def create_chat_job(payload: ChatRequest):
     job_id = str(uuid.uuid4())
 
@@ -34,7 +34,7 @@ async def create_chat_job(payload: ChatRequest):
     })
 
 
-@app.get("/api/result/{job_id}")
+@app.get("/result/{job_id}")
 async def get_result(job_id: str):
     status = redis_client.get(f"job:{job_id}:status")
 
